@@ -1,0 +1,10 @@
+{
+  "config": {"blocks": 128, "pages_per_block": 64, "page_size": 4096, "overprovision": 0.125, "gc": "greedy", "wear": "none", "logical_pages": 7168},
+  "host": {"write_pages": 150000, "read_pages": 0, "trim_pages": 0, "errors": 0, "verify_mismatches": 0},
+  "flash": {"page_reads": 509692, "page_programs": 659692, "block_erases": 10294, "busy_ms": 462426},
+  "ftl": {"write_amplification": 4.39795, "gc_runs": 10294, "gc_pages_moved": 509692, "wl_migrations": 0, "wl_pages_moved": 0, "program_retries": 0, "bad_blocks": 0, "data_loss_pages": 0},
+  "performance": {"throughput_MBps": 1.32865, "write_latency_us": {"p50": 600.0, "p99": 600.0, "p999": 371540.0, "max": 417940.0}, "read_latency_us": {"p50": 0.0, "p99": 0.0, "p999": 0.0}},
+  "wear": {"min": 0, "max": 269, "mean": 80.4219, "stddev": 33.6291, "erase_counts": [120,60,82,64,89,86,86,96,86,80,36,93,63,64,95,41,73,80,62,31,60,83,64,55,66,97,74,55,50,72,80,94,80,68,52,82,39,52,81,67,69,67,74,70,81,109,85,52,79,51,51,105,56,77,86,76,74,56,34,59,69,53,67,73,87,66,94,35,94,65,72,44,72,69,87,85,84,102,55,49,73,76,78,68,60,79,80,68,88,53,76,73,81,76,63,97,100,71,55,72,89,84,62,94,53,81,106,122,71,91,90,87,66,79,90,134,118,94,131,118,188,118,124,236,138,183,269,0]},
+  "invariants_ok": true,
+  "first_error": ""
+}

@@ -1,0 +1,42 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mode: [release, sanitize]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: |
+          if [ "${{ matrix.mode }}" = "sanitize" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Debug -DNANDSIM_SANITIZE=ON -DNANDSIM_WERROR=ON
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DNANDSIM_WERROR=ON
+          fi
+      - name: Build
+        run: cmake --build build -j
+      - name: Unit tests (ctest)
+        run: ctest --test-dir build --output-on-failure
+      - name: Test report
+        run: python3 tools/run_tests.py --tests build/nandsim_tests --report reports
+      - name: Power-loss campaign
+        run: python3 tools/crash_campaign.py --cli build/nandsim_cli --seeds ${{ matrix.mode == 'sanitize' && 30 || 150 }} --report reports
+      - name: Performance regression gate
+        if: matrix.mode == 'release'
+        run: python3 tools/run_bench.py --cli build/nandsim_cli --quick --out reports/bench --baseline bench/baseline.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports-${{ matrix.mode }}
+          path: reports/
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build -A x64
+      - run: cmake --build build --config Release -j
+      - run: ctest --test-dir build -C Release --output-on-failure
