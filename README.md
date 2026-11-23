@@ -1,15 +1,24 @@
 # nandsim — NAND Flash & SSD Firmware Simulator
 
+[![CI](https://github.com/sujeeth2005/nand-flash-ssd-firmware-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/sujeeth2005/nand-flash-ssd-firmware-simulator/actions)
+
 A from-scratch C++17 model of the core logic inside an SSD controller, plus a Python validation and
 benchmarking toolkit. No hardware needed. It models raw NAND (with the real physical rules and
 failure modes) and a page-mapped **Flash Translation Layer** with garbage collection, wear
 levelling and **power-loss recovery**, then attacks it with fault injection.
 
-```
-host reads/writes/trims ─► FTL (L2P map · GC · wear levelling · recovery) ─► NAND model
-                                                                  (program-order rules · erase blocks ·
-                                                                   wear-out · bad blocks · torn writes ·
-                                                                   ECC · simulated time)
+```mermaid
+flowchart LR
+    W["Host workload<br/>reads, writes, trims"] --> FTL
+    subgraph FTL["Flash Translation Layer"]
+        L2P["L2P and P2L maps"]
+        GC["Garbage collection<br/>greedy, cost-benefit"]
+        WL["Wear levelling<br/>none, dynamic, static"]
+        REC["Power-loss recovery<br/>OOB sequence numbers"]
+    end
+    FTL --> NAND["NAND model<br/>erase-before-program, wear-out,<br/>bad blocks, ECC, torn writes"]
+    CH["Crash harness<br/>power cut at the Nth operation"] -.->|inject failure| NAND
+    CH -.->|remount and verify data| REC
 ```
 
 ## Quick start
@@ -64,7 +73,9 @@ properties of this *model*, not of any real drive.
 
 Cost-benefit wins when data has temperature skew (−30 % WA on hot/cold) and is a wash on uniform traffic.
 
-**Wear levelling** — erase-count spread on hot/cold, greedy GC (`results/plots/wear_distribution.png`):
+![Write amplification for each workload, GC policy and wear-levelling mode](results/plots/write_amplification.png)
+
+**Wear levelling** — erase-count spread on hot/cold, greedy GC:
 
 | mode | min…max erases | max−min | WA |
 |---|---|---|---|
@@ -72,10 +83,17 @@ Cost-benefit wins when data has temperature skew (−30 % WA on hot/cold) and is
 | dynamic | 31…194 | 163 | 4.39 |
 | static | 76…124 | 48 | 4.54 |
 
+![Erase count per block, sorted, for each wear-levelling mode](results/plots/wear_distribution.png)
+
 Static levelling shrinks the spread ~5.6× for ~3 % extra write amplification: cold data parked in a
 never-erased block would otherwise leave that block at 0 cycles while hot blocks wear out. (An early
 version of static levelling cost +144 % WA in a unit-test scenario because migrated cold data shared a block with GC
 remnants of hot data and GC kept moving it; fixed by giving migrations their own block — see `wear.cpp`.)
+
+**Tail latency** — median and p99 write latency stay at the 600 µs program time on every workload, but p99.9 reaches
+~370 ms on random workloads because garbage collection runs in the foreground (sequential overwrite stays near 7.6 ms).
+
+![Write latency percentiles per workload and GC policy, static wear levelling](results/plots/write_latency.png)
 
 **Reliability**
 * Exhaustive crash-point sweep: power cut at **every** flash program/erase of a GC-heavy scenario, in
