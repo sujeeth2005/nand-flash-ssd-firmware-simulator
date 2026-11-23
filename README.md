@@ -47,7 +47,7 @@ CMake Tools extension (MSVC) — the CI includes a Windows job, but I could only
 | **Validation** | 60 unit/integration tests; randomized differential fuzzing against a reference model; exhaustive crash-point sweep; randomized crash campaign |
 | **Benchmarking** | trace-driven runner (`W/R/T lpn pages`, `RESET`), data verification on every read, throughput, p50/p99/p99.9 latency, write amplification, erase-count distribution |
 
-## Results (measured; `results/bench.csv`, `reports/`)
+## Results (measured; `results/bench.csv`)
 
 Device: 128 blocks × 64 pages × 4 KiB, 12.5 % over-provisioning, simulated timing 60 µs read / 600 µs program /
 3.5 ms erase. Each workload: sequential preconditioning fill, then 150 000 measured writes. Numbers are
@@ -87,7 +87,6 @@ remnants of hot data and GC kept moving it; fixed by giving migrations their own
 
 ## Bugs the validation found (and that are fixed)
 
-Worth knowing because they are the interesting interview stories:
 1. **GC deadlock after a crash.** Crash fuzzing hit a state with *zero free blocks and no open GC block*, so GC had nowhere to
    copy data. Fixes: the host stream may never take the last 2 free blocks; OOB carries the stream id so `mount()` resumes the
    interrupted GC block instead of mistaking it for a host block; victim selection only considers blocks that fit the
@@ -95,7 +94,7 @@ Worth knowing because they are the interesting interview stories:
 2. **Static wear-levelling write-amplification blow-up** (above).
 3. **Wasted/leaked partial blocks** at mount — closing the two open blocks lost their free tails; now they are resumed.
 
-## Design notes / likely interview questions
+## Design notes
 
 * **Why page-level mapping?** Best write amplification and no read-modify-write; cost is DRAM: here 4 B × logical pages
   (≈ 0.1 % of capacity for 4 KiB pages) — block-level/hybrid mapping trades that for slower random writes.
@@ -140,14 +139,3 @@ nandsim_cli crashsweep [--ops N] [--stride N] [device opts]
 device opts: --blocks --pages-per-block --page-size --op --gc greedy|cost-benefit --wear none|dynamic|static
              --wl-threshold --max-pe --bit-error-prob --ecc-bits --seed
 ```
-
-## Resume bullets (use only the numbers you reproduce yourself)
-
-> **NAND Flash & SSD Firmware Simulator** | C++17, Python, CMake
-> * Built a page-mapped Flash Translation Layer over a NAND model that enforces erase-before-program and sequential-program rules,
->   with greedy and cost-benefit garbage collection and dynamic/static wear levelling; cost-benefit cut write amplification 30 %
->   on hot/cold workloads (4.39 → 3.07) and static levelling reduced erase-count spread 5.6× (269 → 48).
-> * Implemented OOB-sequence-number power-loss recovery and validated it with fault injection: 10 000+ exhaustive crash points
->   (torn programs/erases, crashes during GC and during recovery) and 10 000+ randomized power cuts with zero data-integrity failures.
-> * Wrote 60 C++ tests (differential fuzzing, invariant checker, ASan/UBSan) plus Python workload generators, a benchmark/plotting
->   pipeline and a CI performance-regression gate; fuzzing uncovered and I fixed a post-crash GC deadlock.
